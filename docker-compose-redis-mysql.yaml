@@ -1,0 +1,34 @@
+version: '2'
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+
+  redis:
+    image: 'bitnami/redis:latest'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - app-tier
+    ports:
+      - 6379:6379
+
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 626Tw6qKm7pPQgxF
+      MYSQL_DATABASE: movieinfo
+      MYSQL_USER: movieinfo
+      MYSQL_PASSWORD: JXBaUtkfPx37Ef4H
+    ports:
+      - 3306:3306
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8090:8080

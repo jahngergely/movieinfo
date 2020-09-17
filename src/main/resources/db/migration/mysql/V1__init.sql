@@ -1,0 +1,10 @@
+CREATE TABLE request_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  api VARCHAR(255) DEFAULT NULL,
+  ip_address VARCHAR(255) DEFAULT NULL,
+  host VARCHAR(255) DEFAULT NULL,
+  user_agent VARCHAR(255) DEFAULT NULL,
+  search_term VARCHAR(255) DEFAULT NULL,
+  started_at DATETIME(6),
+  finished_at DATETIME(6)
+);

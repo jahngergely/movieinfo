@@ -1,0 +1,48 @@
+version: '2'
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+
+  movieinfo:
+    image: movieinfo:1
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    environment:
+      - MYSQL_HOST=db
+      - REDIS_HOST=redis
+    volumes:
+      - /data/movieinfo
+    depends_on:
+      - "db"
+      - "redis"
+    ports:
+      - 8080:8080
+
+  redis:
+    image: 'bitnami/redis:latest'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 6379:6379
+
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 626Tw6qKm7pPQgxF
+      MYSQL_DATABASE: movieinfo
+      MYSQL_USER: movieinfo
+      MYSQL_PASSWORD: JXBaUtkfPx37Ef4H
+    ports:
+      - 3306:3306
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8090:8080
