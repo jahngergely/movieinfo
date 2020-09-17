@@ -14,6 +14,8 @@ docker-compose -f docker-compose-redis-mysql.yaml up
 ./mvnw clean install
 2. Start the architecture
 docker-compose up
+3. Endpoint available at:
+http://localhost:8080/movies
 
 ### Configuration
 ````
