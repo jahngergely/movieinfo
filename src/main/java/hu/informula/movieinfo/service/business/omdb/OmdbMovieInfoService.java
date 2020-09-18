@@ -41,7 +41,7 @@ public class OmdbMovieInfoService extends MovieInfoServiceTemplate {
 
         collectMoviesFromSearchResponse(movies, omdbSearchResponse);
 
-        return omdbSearchResponse.getTotalResults() / pageSize;
+        return (int) Math.ceil(omdbSearchResponse.getTotalResults() / (double)pageSize);
     }
 
     @Override
