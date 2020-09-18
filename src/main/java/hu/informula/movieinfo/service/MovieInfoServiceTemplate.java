@@ -1,11 +1,14 @@
 package hu.informula.movieinfo.service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import hu.informula.movieinfo.service.pojo.Movie;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import reactor.core.publisher.Flux;
 
 @Slf4j
 abstract public class MovieInfoServiceTemplate implements MovieInfoService {
@@ -15,29 +18,27 @@ abstract public class MovieInfoServiceTemplate implements MovieInfoService {
 
     @Override
     public List<Movie> getMovieList(String searchTerm) {
-        List<Movie> list = new ArrayList<>();
-
         List<Movie> movies = collectMoviesBasedOnSearchString(searchTerm);
-
-        for (Movie movie : movies) {
-            completeMovie(movie);
-            list.add(movie);
-        }
-
-        return list;
-    }
-
-    protected List<Movie> collectMoviesBasedOnSearchString(String searchTerm) {
-        final List<Movie> movies = new ArrayList<>();
-        int page = 1;
-
-        while (fetchMovies(movies, searchTerm, page) && (pagesThreshold == 0 ||  page < pagesThreshold)) {
-            page++;
-        }
+        completeMovies(movies);
 
         return movies;
     }
 
-    abstract protected boolean fetchMovies(List<Movie> movieIds, String searchTerm, int page);
-    abstract protected void completeMovie(Movie movie);
+    protected List<Movie> collectMoviesBasedOnSearchString(String searchTerm) {
+        final List<Movie> movies = Collections.synchronizedList(new ArrayList<>());
+
+        int numberOfPages = getFirstPageOfMoviesSync(movies, searchTerm);
+        int numberOfPagesWithThreshold = numberOfPages > pagesThreshold && pagesThreshold != 0 ? pagesThreshold : numberOfPages;
+
+        if (numberOfPagesWithThreshold > 1)
+            fetchMoviePagesAsync(movies, searchTerm, numberOfPagesWithThreshold);
+
+        completeMovies(movies);
+
+        return movies;
+    }
+
+    abstract protected int getFirstPageOfMoviesSync(List<Movie> movies, String searchTerm);
+    abstract protected void fetchMoviePagesAsync(List<Movie> movies, String searchTerm, int numberOfPages);
+    abstract protected void completeMovies(List<Movie> movies);
 }

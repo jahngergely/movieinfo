@@ -18,6 +18,9 @@ public class OmdbDetailsResponse {
     @JsonProperty(value = "Error")
     private String error;
 
+    @JsonProperty(value = "imdbID")
+    private String imdbId;
+
     @JsonProperty(value = "Title")
     private String title;
 

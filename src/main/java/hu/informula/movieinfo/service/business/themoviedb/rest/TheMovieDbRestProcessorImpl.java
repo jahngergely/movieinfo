@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 
 @Slf4j
@@ -20,33 +22,35 @@ public class TheMovieDbRestProcessorImpl implements TheMovieDbRestProcessor {
     @Value("${themoviedb.apiBaseUrl:http://api.themoviedb.org/3)}")
     private String apiBaseUrl;
 
-    private RestTemplate restTemplate = new RestTemplate();
-
     @Override
-    @Cacheable("theMovieDbSearch")
-    public TheMovieDbSearchResponse getMovies(String searchTerm, int page) {
-        final String url = String.format("%s/search/movie?query={searchTerm}&api_key={apiKey}&include_adult=true&page={page}", apiBaseUrl);
-
-        log.debug("Query url: {}, searchTerm: {}, apiKey: {}, page: {}", url, searchTerm, apiKey, page);
-
-        TheMovieDbSearchResponse theMovieDbSearchResponse = restTemplate.getForObject(url, TheMovieDbSearchResponse.class, searchTerm, apiKey, page);
-
-        log.debug("REST API response object: {}", theMovieDbSearchResponse.toString());
-
-        return theMovieDbSearchResponse;
+    public TheMovieDbSearchResponse getFirstPageSync(String searchTerm) {
+        log.debug("Collecting first page synchronously with search term: {}", searchTerm);
+        WebClient webClient = WebClient.create(apiBaseUrl);
+        return webClient.get()
+                .uri("/search/movie?query={searchTerm}&api_key={apiKey}&include_adult=true&page={page}", searchTerm, apiKey, 1)
+                .retrieve()
+                .toEntity(TheMovieDbSearchResponse.class)
+                .block()
+                .getBody();
     }
 
     @Override
-    @Cacheable("theMovieDbCredits")
-    public TheMovieDbCreditsResponse getCredits(String id) {
-        final String url = String.format("%s/movie/{id}/credits?api_key={apiKey}", apiBaseUrl);
+    public Mono<TheMovieDbSearchResponse> getPageAsync(String searchTerm, int page) {
+        log.debug("Collecting first page synchronously with search term: {}", searchTerm);
+        WebClient webClient = WebClient.create(apiBaseUrl);
+        return webClient.get()
+                .uri("/search/movie?query={searchTerm}&api_key={apiKey}&include_adult=true&page={page}", searchTerm, apiKey, page)
+                .retrieve()
+                .bodyToMono(TheMovieDbSearchResponse.class);
+    }
 
-        log.debug("Query url: {}, id: {}, apiKey: {}", url, id, apiKey);
-
-        TheMovieDbCreditsResponse theMovieDbCreditsResponse = restTemplate.getForObject(url, TheMovieDbCreditsResponse.class, id, apiKey);
-
-        log.debug("REST API response object: {}", theMovieDbCreditsResponse.toString());
-
-        return theMovieDbCreditsResponse;
+    @Override
+    public Mono<TheMovieDbCreditsResponse> getCredits(String id) {
+        log.debug("Completing movie: {}", id);
+        WebClient webClient = WebClient.create(apiBaseUrl);
+        return webClient.get()
+                .uri("/movie/{id}/credits?api_key={apiKey}", id, apiKey)
+                .retrieve()
+                .bodyToMono(TheMovieDbCreditsResponse.class);
     }
 }

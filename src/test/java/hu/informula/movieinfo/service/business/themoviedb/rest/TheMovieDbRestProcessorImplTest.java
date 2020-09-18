@@ -48,13 +48,13 @@ class TheMovieDbRestProcessorImplTest {
     }
 
     @Test
-    public void test_getMovies() {
+    public void test_getFirstPageSync() {
         mockServer.when(request().withMethod("GET").withPath("/search/movie"), exactly(1))
                 .respond(response().withStatusCode(200).withHeaders(
                         new Header("Content-Type", "application/json; charset=utf-8"),
                         new Header("Cache-Control", "public, max-age=86400"))
                         .withBody(theMovieDbSearchresponseBody));
-        TheMovieDbSearchResponse theMovieDbSearchResponse = theMovieDbRestProcessorImpl.getMovies(SEARCH_TERM, PAGE);
+        TheMovieDbSearchResponse theMovieDbSearchResponse = theMovieDbRestProcessorImpl.getFirstPageSync(SEARCH_TERM);
         assertEquals(1, theMovieDbSearchResponse.getPage());
         assertEquals(1, theMovieDbSearchResponse.getTotalResults());
         assertEquals(1, theMovieDbSearchResponse.getTotalPages());
@@ -64,13 +64,29 @@ class TheMovieDbRestProcessorImplTest {
     }
 
     @Test
-    public void test_getDetails() {
+    public void test_getPageAsync() {
+        mockServer.when(request().withMethod("GET").withPath("/search/movie"), exactly(1))
+                .respond(response().withStatusCode(200).withHeaders(
+                        new Header("Content-Type", "application/json; charset=utf-8"),
+                        new Header("Cache-Control", "public, max-age=86400"))
+                        .withBody(theMovieDbSearchresponseBody));
+        TheMovieDbSearchResponse theMovieDbSearchResponse = theMovieDbRestProcessorImpl.getPageAsync(SEARCH_TERM, 1).block();
+        assertEquals(1, theMovieDbSearchResponse.getPage());
+        assertEquals(1, theMovieDbSearchResponse.getTotalResults());
+        assertEquals(1, theMovieDbSearchResponse.getTotalPages());
+        assertEquals("24428", theMovieDbSearchResponse.getResults().get(0).getId());
+        assertEquals("The Avengers", theMovieDbSearchResponse.getResults().get(0).getTitle());
+        assertEquals("2012-04-25", (new SimpleDateFormat("yyyy-MM-dd")).format(theMovieDbSearchResponse.getResults().get(0).getReleaseDate()));
+    }
+
+    @Test
+    public void test_getCredits() {
         mockServer.when(request().withMethod("GET").withPath("/movie/1/credits"), exactly(1))
                 .respond(response().withStatusCode(200).withHeaders(
                         new Header("Content-Type", "application/json; charset=utf-8"),
                         new Header("Cache-Control", "public, max-age=86400"))
                         .withBody(theMovieDbCreditsResponse));
-        TheMovieDbCreditsResponse theMovieDbCreditsResponse = theMovieDbRestProcessorImpl.getCredits(MOVIE_ID);
+        TheMovieDbCreditsResponse theMovieDbCreditsResponse = theMovieDbRestProcessorImpl.getCredits(MOVIE_ID).block();
         assertEquals("David Fincher", theMovieDbCreditsResponse.getCrew().get(0).getName());
         assertEquals("Director", theMovieDbCreditsResponse.getCrew().get(0).getJob());
         assertEquals("550", theMovieDbCreditsResponse.getId());

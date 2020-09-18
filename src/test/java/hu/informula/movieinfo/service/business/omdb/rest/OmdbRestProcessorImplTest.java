@@ -46,13 +46,26 @@ class OmdbRestProcessorImplTest {
     }
 
     @Test
-    public void test_getMovies() {
+    public void test_getFirstPageSync() {
         mockServer.when(request().withMethod("GET").withPath("/").withQueryStringParameter("s", SEARCH_TERM), exactly(1))
                 .respond(response().withStatusCode(200).withHeaders(
                         new Header("Content-Type", "application/json; charset=utf-8"),
                         new Header("Cache-Control", "public, max-age=86400"))
                         .withBody(omdbSearchresponseBody));
-        OmdbSearchResponse omdbSearchResponse = omdbRestProcessorImpl.getMovies(SEARCH_TERM, PAGE);
+        OmdbSearchResponse omdbSearchResponse = omdbRestProcessorImpl.getFirstPageSync(SEARCH_TERM);
+        assertEquals(1, omdbSearchResponse.getTotalResults());
+        assertEquals(MOVIE_ID, omdbSearchResponse.getSearch().get(0).getImdbId());
+        assertEquals("The Matrix", omdbSearchResponse.getSearch().get(0).getTitle());
+    }
+
+    @Test
+    public void test_getPageAsync() {
+        mockServer.when(request().withMethod("GET").withPath("/").withQueryStringParameter("s", SEARCH_TERM), exactly(1))
+                .respond(response().withStatusCode(200).withHeaders(
+                        new Header("Content-Type", "application/json; charset=utf-8"),
+                        new Header("Cache-Control", "public, max-age=86400"))
+                        .withBody(omdbSearchresponseBody));
+        OmdbSearchResponse omdbSearchResponse = omdbRestProcessorImpl.getPageAsync(SEARCH_TERM, 1).block();
         assertEquals(1, omdbSearchResponse.getTotalResults());
         assertEquals(MOVIE_ID, omdbSearchResponse.getSearch().get(0).getImdbId());
         assertEquals("The Matrix", omdbSearchResponse.getSearch().get(0).getTitle());
@@ -65,7 +78,7 @@ class OmdbRestProcessorImplTest {
                         new Header("Content-Type", "application/json; charset=utf-8"),
                         new Header("Cache-Control", "public, max-age=86400"))
                         .withBody(omdbDetailsResponseBody));
-        OmdbDetailsResponse omdbDetailsResponse = omdbRestProcessorImpl.getDetails(MOVIE_ID);
+        OmdbDetailsResponse omdbDetailsResponse = omdbRestProcessorImpl.getDetails(MOVIE_ID).block();
         assertEquals("Lana Wachowski, Lilly Wachowski", omdbDetailsResponse.getDirector());
         assertEquals("1999", omdbDetailsResponse.getYear());
         assertEquals("The Matrix", omdbDetailsResponse.getTitle());

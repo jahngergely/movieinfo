@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -40,6 +41,7 @@ public class MovieInfoController {
     private RequestHistoryCrudService requestHistoryCrudService;
 
     @GetMapping("/{searchTerm}")
+    @Cacheable(value="movieSearch", key="new org.springframework.cache.interceptor.SimpleKey(#api, #searchTerm)")
     public String getAllMovieBySearchTermAndProvider(@RequestHeader(value = "User-Agent", required = false) String userAgent,
                                                      @RequestHeader(value = "Host", required = false) String host,
                                                      @PathVariable @NotBlank @Size(min = 1) final String searchTerm,

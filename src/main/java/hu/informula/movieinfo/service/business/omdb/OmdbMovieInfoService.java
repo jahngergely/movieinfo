@@ -1,9 +1,8 @@
 package hu.informula.movieinfo.service.business.omdb;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import hu.informula.movieinfo.service.business.omdb.rest.OmdbRestProcessor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,11 +12,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import hu.informula.movieinfo.service.MovieInfoServiceTemplate;
-import hu.informula.movieinfo.service.business.omdb.pojo.OmdbDetailsResponse;
 import hu.informula.movieinfo.service.business.omdb.pojo.OmdbSearchResponse;
 import hu.informula.movieinfo.service.pojo.Movie;
 import hu.informula.movieinfo.utils.ApiType;
 import org.springframework.web.client.HttpServerErrorException;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
@@ -34,38 +34,71 @@ public class OmdbMovieInfoService extends MovieInfoServiceTemplate {
         return apiType == ApiType.OMDB;
     }
 
+
     @Override
-    protected boolean fetchMovies(List<Movie> movies, String searchTerm, int page) {
-        final OmdbSearchResponse searchResponse = omdbRestProcessor.getMovies(searchTerm, page);
+    protected int getFirstPageOfMoviesSync(List<Movie> movies, String searchTerm) {
+        final OmdbSearchResponse omdbSearchResponse = omdbRestProcessor.getFirstPageSync(searchTerm);
 
-        if (!searchResponse.isResponse()) {
-            // This can happen in case of empty result set or end of paging(should not occure, maybe if omdb changes the
-            // pageSize)
-            if (Objects.equals(searchResponse.getError(), "Movie not found!")) {
-                return false;
-            }
+        collectMoviesFromSearchResponse(movies, omdbSearchResponse);
 
-            throw new HttpServerErrorException(searchResponse.getError(), HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
-        }
-
-        movies.addAll(searchResponse.getSearch().stream().filter((omdbSearchItemResponse) -> omdbSearchItemResponse.getType().equals("movie")).map((omdbSearchItemResponse) -> {
-            Movie movie = new Movie();
-            movie.setId(omdbSearchItemResponse.getImdbId());
-            movie.setTitle(omdbSearchItemResponse.getTitle());
-            return movie;
-        }).collect(Collectors.toList()));
-
-        return page * pageSize < searchResponse.getTotalResults();
+        return omdbSearchResponse.getTotalResults() / pageSize;
     }
 
     @Override
-    protected void completeMovie(Movie movie) {
-        final OmdbDetailsResponse detailsResponse = omdbRestProcessor.getDetails(movie.getId());
+    protected void fetchMoviePagesAsync(List<Movie> movies, String searchTerm, int page) {
+        List<Integer> pages = IntStream.rangeClosed(2, page)
+                .boxed().collect(Collectors.toList());
 
-        if (!detailsResponse.isResponse())
-            throw new HttpServerErrorException(detailsResponse.getError(), HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
+        Flux.fromIterable(pages)
+                .parallel()
+                .runOn(Schedulers.elastic())
+                .flatMap((pageToCollect) -> omdbRestProcessor.getPageAsync(searchTerm, pageToCollect))
+                .doOnNext((omdbSearchResponse) -> {
+                    collectMoviesFromSearchResponse(movies, omdbSearchResponse);
+                })
+                .sequential()
+                .blockLast();
+    }
 
-        movie.setYear(detailsResponse.getYear());
-        movie.setDirector(Arrays.asList(detailsResponse.getDirector().split(",")));
+    @Override
+    protected void completeMovies(List<Movie> movies) {
+        log.debug("Collecting movie completing data for {} movies", movies.size());
+
+        Flux.fromIterable(movies)
+                .parallel()
+                .runOn(Schedulers.elastic())
+                .flatMap((movie) -> omdbRestProcessor.getDetails(movie.getId()))
+                .doOnNext((omdbDetailsResponse) -> {
+
+                    if (!omdbDetailsResponse.isResponse())
+                        throw new HttpServerErrorException(omdbDetailsResponse.getError(), HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
+
+                    Optional<Movie> movieToComplete = movies.stream().filter((movie) -> movie.getId().equals(omdbDetailsResponse.getImdbId())).findAny();
+
+                    if (movieToComplete.isPresent()) {
+                        movieToComplete.get().setYear(omdbDetailsResponse.getYear());
+                        movieToComplete.get().setDirector(Arrays.asList(omdbDetailsResponse.getDirector().split(",")));
+                    }
+                })
+                .sequential()
+                .blockLast();
+
+        log.debug("All movie completing data received");
+    }
+
+    private void collectMoviesFromSearchResponse(List<Movie> movies, OmdbSearchResponse omdbSearchResponse) {
+        if (!omdbSearchResponse.isResponse()) {
+            // This can happen in case of empty result set or end of paging(should not occure, maybe if omdb changes the
+            // pageSize)
+            if (!Objects.equals(omdbSearchResponse.getError(), "Movie not found!"))
+                throw new HttpServerErrorException(omdbSearchResponse.getError(), HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
+        } else {
+            movies.addAll(omdbSearchResponse.getSearch().stream().filter((omdbSearchItemResponse) -> omdbSearchItemResponse.getType().equals("movie")).map((omdbSearchItemResponse) -> {
+                Movie movie = new Movie();
+                movie.setId(omdbSearchItemResponse.getImdbId());
+                movie.setTitle(omdbSearchItemResponse.getTitle());
+                return movie;
+            }).collect(Collectors.toList()));
+        }
     }
 }
