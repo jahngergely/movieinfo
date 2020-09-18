@@ -66,11 +66,13 @@ public class TheMovieDbMovieInfoService extends MovieInfoServiceTemplate {
                 .doOnNext((theMovieDbCreditsResponse) -> {
                     Optional<Movie> movieToComplete = movies.stream().filter((movie) -> movie.getId().equals(theMovieDbCreditsResponse.getId())).findAny();
 
-                    if (movieToComplete.isPresent())
+                    if (movieToComplete.isPresent()) {
                         movieToComplete.get().setDirector(theMovieDbCreditsResponse
                                 .getCrew().stream().filter((theMovieDbCreditItemResponse) -> Objects
                                         .equals(theMovieDbCreditItemResponse.getJob(), "Director"))
                                 .map(TheMovieDbCreditItemResponse::getName).collect(Collectors.toList()));
+                        log.debug("Completed movie: {}", movieToComplete.get());
+                    }
                 })
                 .sequential()
                 .blockLast();

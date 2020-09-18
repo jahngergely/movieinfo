@@ -33,8 +33,6 @@ abstract public class MovieInfoServiceTemplate implements MovieInfoService {
         if (numberOfPagesWithThreshold > 1)
             fetchMoviePagesAsync(movies, searchTerm, numberOfPagesWithThreshold);
 
-        completeMovies(movies);
-
         return movies;
     }
 

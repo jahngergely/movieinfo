@@ -69,7 +69,6 @@ public class OmdbMovieInfoService extends MovieInfoServiceTemplate {
                 .runOn(Schedulers.elastic())
                 .flatMap((movie) -> omdbRestProcessor.getDetails(movie.getId()))
                 .doOnNext((omdbDetailsResponse) -> {
-
                     if (!omdbDetailsResponse.isResponse())
                         throw new HttpServerErrorException(omdbDetailsResponse.getError(), HttpStatus.INTERNAL_SERVER_ERROR, "", null, null, null);
 
@@ -78,7 +77,9 @@ public class OmdbMovieInfoService extends MovieInfoServiceTemplate {
                     if (movieToComplete.isPresent()) {
                         movieToComplete.get().setYear(omdbDetailsResponse.getYear());
                         movieToComplete.get().setDirector(Arrays.asList(omdbDetailsResponse.getDirector().split(",")));
+                        log.debug("Completed movie: {}", movieToComplete.get());
                     }
+
                 })
                 .sequential()
                 .blockLast();

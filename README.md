@@ -12,9 +12,11 @@ docker-compose -f docker-compose-redis-mysql.yaml up
 #### For production
 1. Build the jar file
 ./mvnw clean install
-2. Start the architecture
+2. Rebuild Docker image 
+docker-compose build --no-cache
+3. Start the architecture
 docker-compose up
-3. Endpoint available at:
+4. Endpoint available at:
 http://localhost:8080/movies
 
 ### Configuration
