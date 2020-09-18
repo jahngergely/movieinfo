@@ -34,7 +34,7 @@ public class OmdbRestProcessorImpl implements OmdbRestProcessor {
 
     @Override
     public Mono<OmdbSearchResponse> getPageAsync(String searchTerm, int page) {
-        log.debug("Collecting first page synchronously with search term: {}", searchTerm);
+        log.debug("Collecting page {} asynchronously with search term: {}", page, searchTerm);
         WebClient webClient = WebClient.create(apiBaseUrl);
         return webClient.get()
                 .uri("/?s={searchTerm}&apiKey={apiKey}&page={page}", searchTerm, apiKey, page)
@@ -44,6 +44,7 @@ public class OmdbRestProcessorImpl implements OmdbRestProcessor {
 
     @Override
     public Mono<OmdbDetailsResponse> getDetails(String id) {
+        log.debug("Completing movie: {}", id);
         WebClient webClient = WebClient.create(apiBaseUrl);
         return webClient.get()
                 .uri("/?i={id}&apiKey={apiKey}", id, apiKey)

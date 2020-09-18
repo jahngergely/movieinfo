@@ -36,7 +36,7 @@ public class TheMovieDbRestProcessorImpl implements TheMovieDbRestProcessor {
 
     @Override
     public Mono<TheMovieDbSearchResponse> getPageAsync(String searchTerm, int page) {
-        log.debug("Collecting first page synchronously with search term: {}", searchTerm);
+        log.debug("Collecting page {} asynchronously with search term: {}", page, searchTerm);
         WebClient webClient = WebClient.create(apiBaseUrl);
         return webClient.get()
                 .uri("/search/movie?query={searchTerm}&api_key={apiKey}&include_adult=true&page={page}", searchTerm, apiKey, page)
